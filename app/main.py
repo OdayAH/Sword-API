@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.startup import init_db
 from app.api.routes import router 
+from app.api.routers.users import router as users_router
 
 app = FastAPI()
 
@@ -16,4 +17,4 @@ def health_db(db: Session = Depends(get_db)):
     db.execute(select(1))
     return {"db": "ok"}
 
-app.include_router(router)
+app.include_router(users_router)
