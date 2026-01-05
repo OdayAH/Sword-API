@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.startup import init_db
-from app.api.routes import router 
 from app.api.routers.users import router as users_router
+from app.api.auth import router as auth_router
 
 app = FastAPI()
 
@@ -18,3 +18,6 @@ def health_db(db: Session = Depends(get_db)):
     return {"db": "ok"}
 
 app.include_router(users_router)
+
+app.include_router(auth_router)
+

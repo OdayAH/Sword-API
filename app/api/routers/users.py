@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.user import User
-from app.schemas import UserCreate, UserResponse
+from app.schemas import UserCreate, UserResponse, UserUpdate
 from app.services.token_service import issue_and_store_tokens
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -20,7 +20,13 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserResponse(id=user.id, name=user.name, email=user.email, token=None)
+    return UserResponse(id=user.id, 
+                        name=user.name, 
+                        email=user.email, 
+                        date_of_birth= user.date_of_birth, 
+                        country_code= user.country_code, 
+                        phone= user.phone, 
+                        token=None)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -32,39 +38,53 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         new_user = User(**user.model_dump())
         db.add(new_user)
         db.commit()
-        db.refresh(new_user) 
-        # Generate and store token
+        db.refresh(new_user)
+
         token_data = issue_and_store_tokens(db, new_user)
-        
-        # Ensure we have the access token
         access_token = token_data.access_token if token_data else None
-        
-        # Return user response with token
-        response = UserResponse(
+
+        return UserResponse(
             id=new_user.id,
             name=new_user.name,
             email=new_user.email,
             token=access_token
         )
-        
-        return response
+
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
+def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    for field, value in user.model_dump().items():
+    data = user.model_dump(exclude_unset=True)
+
+    # Email cannot be updated
+    data.pop("email", None)
+
+    for field, value in data.items():
         setattr(db_user, field, value)
 
     db.commit()
     db.refresh(db_user)
-    return UserResponse(id=db_user.id, name=db_user.name, email=db_user.email, token=None)
+
+    return UserResponse(
+        id=db_user.id,
+        name=db_user.name,
+        email=db_user.email,
+        date_of_birth=db_user.date_of_birth,
+        country_code=db_user.country_code,
+        phone=db_user.phone,
+        token=None,
+    )
+
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

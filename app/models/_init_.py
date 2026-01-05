@@ -1,3 +1,4 @@
 from app.models.user import User 
 from app.models.service import Service  
-from app.models.personal_access_token import Personal_Access_Token 
+from app.models.personal_access_token import PersonalAccessToken
+from app.models.address import Address
