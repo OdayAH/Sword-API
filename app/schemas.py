@@ -8,7 +8,6 @@ class UserCreate(BaseModel):
     name: str
     date_of_birth: date
     phone: str
-    country_code: str
     email: EmailStr
     password: str
 
@@ -74,7 +73,6 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
-    country_code: Optional[str] = None
     date_of_birth: Optional[date] = None
 
 class UserResponse(BaseModel):
@@ -83,7 +81,6 @@ class UserResponse(BaseModel):
     email: str
     date_of_birth: date
     phone: str
-    country_code: str
     token: Optional[str] = None
 
     class Config:

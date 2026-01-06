@@ -24,7 +24,6 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
                         name=user.name, 
                         email=user.email, 
                         date_of_birth= user.date_of_birth, 
-                        country_code= user.country_code, 
                         phone= user.phone, 
                         token=None)
 
@@ -47,6 +46,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
             id=new_user.id,
             name=new_user.name,
             email=new_user.email,
+            date_of_birth=new_user.date_of_birth,
+            phone=new_user.phone,
             token=access_token
         )
 
@@ -80,7 +81,6 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
         name=db_user.name,
         email=db_user.email,
         date_of_birth=db_user.date_of_birth,
-        country_code=db_user.country_code,
         phone=db_user.phone,
         token=None,
     )

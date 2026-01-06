@@ -18,6 +18,7 @@ if config.config_file_name is not None:
 from app.db import Base  # noqa: E402
 import app.models  # noqa: F401, E402
 
+
 target_metadata = Base.metadata
 
 VERSION_TABLE_SCHEMA = "SWORD"
