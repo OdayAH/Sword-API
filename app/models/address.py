@@ -1,7 +1,7 @@
 # app/models/address.py
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
@@ -25,5 +25,6 @@ class Address(Base):
     building: Mapped[str] = mapped_column(String(50), nullable=False)
     floor: Mapped[str] = mapped_column(String(50), nullable=False)
     nickname: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     user: Mapped[User] = relationship("User", back_populates="addresses")

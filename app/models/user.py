@@ -2,13 +2,13 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, Date
+from sqlalchemy import Integer, String, Date, ForeignKey
 from app.db import Base
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.address import Address
 
 if TYPE_CHECKING:
-    pass
+    from app.models.roles import Role
 
 class User(Base):
     __tablename__ = "users"
@@ -20,7 +20,10 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(150), nullable=False)
     date_of_birth: Mapped[Date] = mapped_column(Date, nullable=False)
     phone: Mapped[str] = mapped_column(String(15), nullable=True)
-    # country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("SWORD.roles.id"), nullable=False, server_default="1")
+    website: Mapped[str] = mapped_column(String(150), unique=False, nullable=True)
+
+    role: Mapped[Role] = relationship("Role")
 
     personal_access_tokens: Mapped[list[PersonalAccessToken]] = relationship(
         "PersonalAccessToken",

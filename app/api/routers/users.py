@@ -3,38 +3,49 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.user import User
+from app.models.roles import Role
 from app.schemas import UserCreate, UserResponse, UserUpdate
 from app.services.token_service import issue_and_store_tokens
+from app.api.auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=list[UserResponse])
-def get_all_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    return [UserResponse(id=u.id, name=u.name, email=u.email, token=None) for u in users]
 
-
-@router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserResponse(id=user.id, 
                         name=user.name, 
                         email=user.email, 
-                        date_of_birth= user.date_of_birth, 
-                        phone= user.phone, 
+                        date_of_birth=user.date_of_birth, 
+                        phone=user.phone,
+                        website=user.website,
+                        role={"id": user.role.id, "name": user.role.name} if user.role else None,
                         token=None)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    """Create a new user with selected role (1=user, 2=provider)."""
     try:
         if db.query(User).filter(User.email == user.email).first():
             raise HTTPException(status_code=409, detail="Email already exists")
 
-        new_user = User(**user.model_dump())
+        if user.role_id not in [1, 2]:
+            raise HTTPException(status_code=400, detail="Invalid role. Must be 1 (user) or 2 (provider)")
+
+        new_user = User(
+            name=user.name,
+            email=user.email,
+            password=user.password,
+            date_of_birth=user.date_of_birth,
+            phone=user.phone,
+            role_id=user.role_id,
+            website=user.website
+        )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -48,6 +59,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
             email=new_user.email,
             date_of_birth=new_user.date_of_birth,
             phone=new_user.phone,
+            website=new_user.website,
+            role={"id": new_user.role.id, "name": new_user.role.name} if new_user.role else None,
             token=access_token
         )
 
@@ -59,15 +72,15 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
 
-@router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
+@router.put("/me", response_model=UserResponse)
+def update_current_user(user_update: UserUpdate, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update the current authenticated user's profile using bearer token."""
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    data = user.model_dump(exclude_unset=True)
+    data = user_update.model_dump(exclude_unset=True)
 
-    # Email cannot be updated
     data.pop("email", None)
 
     for field, value in data.items():
@@ -82,21 +95,21 @@ def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
         email=db_user.email,
         date_of_birth=db_user.date_of_birth,
         phone=db_user.phone,
+        website=db_user.website,
+        role={"id": db_user.role.id, "name": db_user.role.name} if db_user.role else None,
         token=None,
     )
 
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_current_user(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete all related personal access tokens first
     for token in db_user.personal_access_tokens:
         db.delete(token)
-    
-    # Now delete the user
+
     db.delete(db_user)
     db.commit()

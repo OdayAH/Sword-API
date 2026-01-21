@@ -1,17 +1,43 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer
+from starlette.authentication import AuthCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 
 from app.db import get_db
 from app.models.user import User
+from app.models.roles import Role
 from app.services.token_service import issue_and_store_tokens
+from app.core.jwt import verify_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+security = HTTPBearer()
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class RoleResponse(BaseModel):
+    id: int
+    name: str
+    
+    class Config:
+        from_attributes = True
+
+
+def get_current_user(credentials = Depends(security)) -> int:
+
+    return verify_token(credentials.credentials)
+
+
+@router.get("/roles", response_model=list[RoleResponse])
+def get_roles(db: Session = Depends(get_db)):
+    roles = db.query(Role).order_by(Role.id).all()
+    if not roles:
+        raise HTTPException(status_code=500, detail="No roles found in database")
+    return roles
 
 
 @router.post("/login")
