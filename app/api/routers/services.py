@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -6,26 +8,88 @@ from app.models.service import Service
 from app.models.user import User
 from app.schemas import ServiceCreate, ServiceResponse, ServiceUpdate
 from app.api.auth import get_current_user
+from app.core.cache import cache_manager
+from app.core.jwt import verify_token
 
 router = APIRouter(prefix="/services", tags=["services"])
+security = HTTPBearer()
+
+
+def get_optional_user(credentials: HTTPBearer = Depends(security)) -> int | None:
+    try:
+        return verify_token(credentials.credentials)
+    except:
+        return None
 
 
 @router.get("", response_model=list[ServiceResponse])
-def get_all_services(db: Session = Depends(get_db)):
-    services = db.query(Service).all()
-    return [
+def get_all_services(
+    db: Session = Depends(get_db),
+    credentials: HTTPBearer = Depends(security),
+):
+    user_id = None
+    user_role = None
+    try:
+        user_id = verify_token(credentials.credentials)
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user_role = user.role_id
+    except:
+        pass
+    if user_role == 2:
+        cache_key = f"services:provider_{user_id}"
+        cached_services = cache_manager.get(cache_key)
+        if cached_services is not None:
+            return JSONResponse(
+                content=[item.model_dump() if isinstance(item, ServiceResponse) else item for item in cached_services],
+                headers={"X-Cache": "HIT", "X-Cache-Key": cache_key}
+            )
+        
+        services = db.query(Service).filter(Service.provider_id == user_id).all()
+        result = [
+            ServiceResponse(
+                id=service.id,
+                name=service.name,
+                description=service.description,
+                price=service.price,
+                status=service.status,
+                provider={"id": service.provider.id, "name": service.provider.name, "email": service.provider.email} if service.provider else None,
+            )
+            for service in services
+        ]
+        
+        cache_manager.set(cache_key, result, tags=[f"provider_{user_id}"])
+        return JSONResponse(
+            content=[item.model_dump() for item in result],
+            headers={"X-Cache": "MISS", "X-Cache-Key": cache_key}
+        )
+    
+    # For regular users, return active services only
+    cached_services = cache_manager.get("services:public")
+    if cached_services is not None:
+        return JSONResponse(
+            content=[item.model_dump() if isinstance(item, ServiceResponse) else item for item in cached_services],
+            headers={"X-Cache": "HIT", "X-Cache-Key": "services:public"}
+        )
+    
+    services = db.query(Service).filter(Service.status == True).all()
+    result = [
         ServiceResponse(
             id=service.id,
             name=service.name,
             description=service.description,
             price=service.price,
             status=service.status,
-            provider_id=service.provider_id,
+            provider={"id": service.provider.id, "name": service.provider.name, "email": service.provider.email} if service.provider else None,
         )
         for service in services
     ]
-
-
+    
+    cache_manager.set("services:public", result, tags=["public"])
+    return JSONResponse(
+        content=[item.model_dump() for item in result],
+        headers={"X-Cache": "MISS", "X-Cache-Key": "services:public"}
+    )
 @router.get("/{service_id}", response_model=ServiceResponse)
 def get_service(service_id: int, db: Session = Depends(get_db)):
     service = db.query(Service).filter(Service.id == service_id).first()
@@ -38,10 +102,8 @@ def get_service(service_id: int, db: Session = Depends(get_db)):
         description=service.description,
         price=service.price,
         status=service.status,
-        provider_id=service.provider_id,
         provider={"id": service.provider.id, "name": service.provider.name, "email": service.provider.email} if service.provider else None,
     )
-
 
 
 @router.post("", response_model=ServiceResponse, status_code=status.HTTP_201_CREATED)
@@ -71,6 +133,8 @@ def create_service(
         db.add(new_service)
         db.commit()
         db.refresh(new_service)
+   
+        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
 
         return ServiceResponse(
             id=new_service.id,
@@ -78,7 +142,6 @@ def create_service(
             description=new_service.description,
             price=new_service.price,
             status=new_service.status,
-            provider_id=new_service.provider_id,
             provider={"id": new_service.provider.id, "name": new_service.provider.name, "email": new_service.provider.email} if new_service.provider else None,
         )
 
@@ -102,7 +165,7 @@ def update_service(
         if not service:
             raise HTTPException(status_code=404, detail="Service not found")
 
-        if service.provider_id != user_id:
+        if service.provider.id != user_id:
             raise HTTPException(
                 status_code=403,
                 detail="You can only update your own services"
@@ -115,6 +178,8 @@ def update_service(
 
         db.commit()
         db.refresh(service)
+ 
+        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
 
         return ServiceResponse(
             id=service.id,
@@ -122,7 +187,6 @@ def update_service(
             description=service.description,
             price=service.price,
             status=service.status,
-            provider_id=service.provider_id,
             provider={"id": service.provider.id, "name": service.provider.name, "email": service.provider.email} if service.provider else None,
         )
 
@@ -146,7 +210,7 @@ def delete_service(
             raise HTTPException(status_code=404, detail="Service not found")
 
 
-        if service.provider_id != user_id:
+        if service.provider.id != user_id:
             raise HTTPException(
                 status_code=403,
                 detail="You can only delete your own services"
@@ -154,6 +218,8 @@ def delete_service(
 
         db.delete(service)
         db.commit()
+       
+        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
 
     except HTTPException:
         db.rollback()
