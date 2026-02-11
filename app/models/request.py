@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.service import Service
 
-class Order(Base):
-    __tablename__ = "orders"
+class Request(Base):
+    __tablename__ = "requests"
     __table_args__ = {"schema": "SWORD"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

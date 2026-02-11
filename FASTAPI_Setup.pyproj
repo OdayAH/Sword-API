@@ -39,7 +39,7 @@
     <Compile Include="app\models\personal_access_token.py" />
     <Compile Include="app\models\address.py" />
     <Compile Include="app\models\roles.py" />
-    <Compile Include="app\models\order.py" />
+    <Compile Include="app\models\request.py" />
     <Compile Include="app\core\config.py" />
     <Compile Include="app\core\cache.py" />
     <Compile Include="app\core\jwt.py" />
