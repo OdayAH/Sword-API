@@ -1,23 +1,29 @@
-# app/services/token_service.py
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
-from app.core.jwt import create_access_token as create_jwt
+from app.core.security import create_access_token as create_jwt
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.user import User
+
 
 def issue_and_store_tokens(db: Session, user: User) -> PersonalAccessToken:
     access_token, access_exp = create_jwt(
         subject=str(user.id),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-        extra={"type": "access"},
+        extra={
+            "token_type": "access",
+            "actor_type": "user",
+        },
     )
 
     refresh_token, refresh_exp = create_jwt(
         subject=str(user.id),
         expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-        extra={"type": "refresh"},
+        extra={
+            "token_type": "refresh",
+            "actor_type": "user",
+        },
     )
 
     now = datetime.now(timezone.utc)

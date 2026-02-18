@@ -3,7 +3,9 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 import re
-from datetime import date
+from datetime import date, datetime
+
+from app.enums import RequestStatus
 
 
 class UserCreate(BaseModel):
@@ -193,6 +195,41 @@ class ServiceResponse(BaseModel):
     price: int
     status: bool
     provider: Optional[dict] = None
+
+    model_config = {"from_attributes": True}
+
+
+class RequestCreate(BaseModel):
+    service_id: int
+
+    @field_validator("service_id")
+    @classmethod
+    def validate_service_id(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("Service ID must be a positive integer")
+        return v
+
+
+class RequestStatusUpdate(BaseModel):
+    status: RequestStatus
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: RequestStatus) -> RequestStatus:
+        if v == RequestStatus.pending:
+            raise ValueError("Cannot set status back to pending")
+        return v
+
+
+class RequestResponse(BaseModel):
+    id: int
+    user_id: int
+    service_id: int
+    status: RequestStatus
+    created_at: datetime
+    updated_at: datetime
+    user: Optional[dict] = None
+    service: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 

@@ -27,6 +27,14 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="app\api\controllers\requests_controller.py" />
+    <Compile Include="app\api\controllers\services_controller.py" />
+    <Compile Include="app\api\crud\requests.py" />
+    <Compile Include="app\api\crud\services.py" />
+    <Compile Include="app\api\routers\requests.py" />
+    <Compile Include="app\core\rate_limit.py" />
+    <Compile Include="app\core\security.py" />
+    <Compile Include="app\enums.py" />
     <Compile Include="run.py" />
     <Compile Include="app\__init__.py" />
     <Compile Include="app\main.py" />
@@ -42,7 +50,6 @@
     <Compile Include="app\models\request.py" />
     <Compile Include="app\core\config.py" />
     <Compile Include="app\core\cache.py" />
-    <Compile Include="app\core\jwt.py" />
     <Compile Include="app\services\token_service.py" />
     <Compile Include="app\api\auth.py" />
     <Compile Include="app\api\routers\users.py" />
@@ -57,6 +64,8 @@
     <Folder Include="app\" />
     <Folder Include="app\models\" />
     <Folder Include="app\core\" />
+    <Folder Include="app\api\controllers\" />
+    <Folder Include="app\api\crud\" />
     <Folder Include="app\services\" />
     <Folder Include="app\api\" />
     <Folder Include="app\api\routers\" />

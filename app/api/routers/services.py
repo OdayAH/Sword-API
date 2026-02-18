@@ -9,8 +9,7 @@ from app.models.user import User
 from app.schemas import ServiceCreate, ServiceResponse, ServiceUpdate
 from app.api.auth import get_current_user
 from app.core.cache import cache_manager
-from app.core.jwt import verify_token
-from app.enums import Roles
+from app.core.security import verify_token
 
 router = APIRouter(prefix="/services", tags=["services"])
 security = HTTPBearer()
@@ -28,16 +27,16 @@ def get_all_services(
     db: Session = Depends(get_db),
     credentials: HTTPBearer = Depends(security),
 ):
+    user_id = None
+    user_role = None
     try:
         user_id = verify_token(credentials.credentials)
-        print(f"User ID: {user_id}")
-        return JSONResponse({"message": "Stopped for testing", "user_id": user_id})
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             user_role = user.role_id
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    if user_role == Roles.PROVIDER:
+    except:
+        pass
+    if user_role == 2:
         cache_key = f"services:provider_{user_id}"
         cached_services = cache_manager.get(cache_key)
         if cached_services is not None:
@@ -118,7 +117,7 @@ def create_service(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        if user.role_id != Roles.PROVIDER:
+        if user.role_id != 2:
             raise HTTPException(
                 status_code=403,
                 detail="Only providers can create services"
