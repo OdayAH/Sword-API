@@ -6,8 +6,10 @@ from typing import Any, Optional, TypedDict, Literal
 from jose import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import JWT_SECRET_KEY, JWT_ALGORITHM
+from app.db import get_db
 
 security = HTTPBearer()
 
@@ -83,13 +85,16 @@ def verify_token(token: str) -> int:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> int:
+    db: Session = Depends(get_db),
+):
     """
     Strict auth dependency.
     - Missing token -> 403/401 from HTTPBearer
     - Invalid/expired -> 401 from decode_token()
-    Returns: user_id as int (backwards compatible with your current routers).
+    Returns: full User ORM object with role eagerly loaded.
     """
+    from app.models.user import User
+
     token = credentials.credentials
     payload = decode_token(token)
 
@@ -101,9 +106,24 @@ def get_current_user(
         )
 
     try:
-        return int(subject)
+        user_id = int(subject)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
+
+    user = (
+        db.query(User)
+        .options(joinedload(User.role))
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    return user

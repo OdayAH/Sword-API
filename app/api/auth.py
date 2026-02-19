@@ -61,17 +61,17 @@ def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)
 @router.post("/logout")
 def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     token = credentials.credentials
 
-    # Delete the token row (revokes access + refresh because they�re in same row)
+    # Delete the token row (revokes access + refresh because they're in the same row)
     deleted = (
         db.query(PersonalAccessToken)
         .filter(
             PersonalAccessToken.access_token == token,
-            PersonalAccessToken.user_id == user_id,
+            PersonalAccessToken.user_id == current_user.id,
         )
         .delete()
     )

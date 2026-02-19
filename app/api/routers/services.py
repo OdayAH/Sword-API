@@ -7,9 +7,8 @@ from app.db import get_db
 from app.models.service import Service
 from app.models.user import User
 from app.schemas import ServiceCreate, ServiceResponse, ServiceUpdate
-from app.api.auth import get_current_user
+from app.core.security import get_current_user, verify_token
 from app.core.cache import cache_manager
-from app.core.security import verify_token
 
 router = APIRouter(prefix="/services", tags=["services"])
 security = HTTPBearer()
@@ -44,7 +43,7 @@ def get_all_services(
                 content=[item.model_dump() if isinstance(item, ServiceResponse) else item for item in cached_services],
                 headers={"X-Cache": "HIT", "X-Cache-Key": cache_key}
             )
-        
+
         services = db.query(Service).filter(Service.provider_id == user_id).all()
         result = [
             ServiceResponse(
@@ -57,13 +56,13 @@ def get_all_services(
             )
             for service in services
         ]
-        
+
         cache_manager.set(cache_key, result, tags=[f"provider_{user_id}"])
         return JSONResponse(
             content=[item.model_dump() for item in result],
             headers={"X-Cache": "MISS", "X-Cache-Key": cache_key}
         )
-    
+
     # For regular users, return active services only
     cached_services = cache_manager.get("services:public")
     if cached_services is not None:
@@ -71,7 +70,7 @@ def get_all_services(
             content=[item.model_dump() if isinstance(item, ServiceResponse) else item for item in cached_services],
             headers={"X-Cache": "HIT", "X-Cache-Key": "services:public"}
         )
-    
+
     services = db.query(Service).filter(Service.status == True).all()
     result = [
         ServiceResponse(
@@ -84,18 +83,20 @@ def get_all_services(
         )
         for service in services
     ]
-    
+
     cache_manager.set("services:public", result, tags=["public"])
     return JSONResponse(
         content=[item.model_dump() for item in result],
         headers={"X-Cache": "MISS", "X-Cache-Key": "services:public"}
     )
+
+
 @router.get("/{service_id}", response_model=ServiceResponse)
 def get_service(service_id: int, db: Session = Depends(get_db)):
     service = db.query(Service).filter(Service.id == service_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
+
     return ServiceResponse(
         id=service.id,
         name=service.name,
@@ -109,15 +110,11 @@ def get_service(service_id: int, db: Session = Depends(get_db)):
 @router.post("", response_model=ServiceResponse, status_code=status.HTTP_201_CREATED)
 def create_service(
     service: ServiceCreate,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        if user.role_id != 2:
+        if current_user.role_id != 2:
             raise HTTPException(
                 status_code=403,
                 detail="Only providers can create services"
@@ -128,13 +125,13 @@ def create_service(
             description=service.description,
             price=service.price,
             status=service.status,
-            provider_id=user_id
+            provider_id=current_user.id
         )
         db.add(new_service)
         db.commit()
         db.refresh(new_service)
-   
-        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
+
+        cache_manager.invalidate_tags(["public", f"provider_{current_user.id}"])
 
         return ServiceResponse(
             id=new_service.id,
@@ -157,7 +154,7 @@ def create_service(
 def update_service(
     service_id: int,
     service_update: ServiceUpdate,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
@@ -165,7 +162,7 @@ def update_service(
         if not service:
             raise HTTPException(status_code=404, detail="Service not found")
 
-        if service.provider.id != user_id:
+        if service.provider.id != current_user.id:
             raise HTTPException(
                 status_code=403,
                 detail="You can only update your own services"
@@ -178,8 +175,8 @@ def update_service(
 
         db.commit()
         db.refresh(service)
- 
-        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
+
+        cache_manager.invalidate_tags(["public", f"provider_{current_user.id}"])
 
         return ServiceResponse(
             id=service.id,
@@ -201,7 +198,7 @@ def update_service(
 @router.delete("/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_service(
     service_id: int,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
@@ -209,8 +206,7 @@ def delete_service(
         if not service:
             raise HTTPException(status_code=404, detail="Service not found")
 
-
-        if service.provider.id != user_id:
+        if service.provider.id != current_user.id:
             raise HTTPException(
                 status_code=403,
                 detail="You can only delete your own services"
@@ -218,8 +214,8 @@ def delete_service(
 
         db.delete(service)
         db.commit()
-       
-        cache_manager.invalidate_tags(["public", f"provider_{user_id}"])
+
+        cache_manager.invalidate_tags(["public", f"provider_{current_user.id}"])
 
     except HTTPException:
         db.rollback()

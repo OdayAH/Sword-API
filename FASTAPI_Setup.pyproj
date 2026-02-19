@@ -32,6 +32,7 @@
     <Compile Include="app\api\crud\requests.py" />
     <Compile Include="app\api\crud\services.py" />
     <Compile Include="app\api\routers\requests.py" />
+    <Compile Include="app\core\email.py" />
     <Compile Include="app\core\rate_limit.py" />
     <Compile Include="app\core\security.py" />
     <Compile Include="app\enums.py" />

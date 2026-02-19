@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.models.user import User
 from app.api.controllers import requests_controller
 from app.schemas import RequestCreate, RequestResponse, RequestStatusUpdate
 from app.core.security import get_current_user
@@ -20,18 +21,19 @@ router = APIRouter(prefix="/requests", tags=["requests"])
 def create_request(
     request: Request,
     payload: RequestCreate,
-    user_id: int = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new service request. Status defaults to pending."""
-    return requests_controller.create_request(db=db, user_id=user_id, payload=payload)
+    return requests_controller.create_request(db=db, user_id=current_user.id, payload=payload, background_tasks=background_tasks)
 
 
 @router.get("", response_model=list[RequestResponse])
 @limiter.limit(REQUEST_LIST_LIMIT)
 def get_requests(
     request: Request,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -39,7 +41,7 @@ def get_requests(
     - Providers: see requests for their services
     - Users: see their own requests
     """
-    return requests_controller.list_requests(db=db, user_id=user_id)
+    return requests_controller.list_requests(db=db, user_id=current_user.id)
 
 
 @router.get("/{request_id}", response_model=RequestResponse)
@@ -47,11 +49,11 @@ def get_requests(
 def get_request(
     request: Request,
     request_id: int,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get a single request by ID."""
-    return requests_controller.get_request(db=db, user_id=user_id, request_id=request_id)
+    return requests_controller.get_request(db=db, user_id=current_user.id, request_id=request_id)
 
 
 @router.put("/{request_id}/status", response_model=RequestResponse)
@@ -60,7 +62,8 @@ def update_request_status(
     request: Request,
     request_id: int,
     payload: RequestStatusUpdate,
-    user_id: int = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -68,7 +71,7 @@ def update_request_status(
     Only the service provider can update the status.
     """
     return requests_controller.update_request_status(
-        db=db, user_id=user_id, request_id=request_id, payload=payload
+        db=db, user_id=current_user.id, request_id=request_id, payload=payload, background_tasks=background_tasks
     )
 
 
@@ -77,8 +80,8 @@ def update_request_status(
 def cancel_request(
     request: Request,
     request_id: int,
-    user_id: int = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Cancel a pending request. Only the requester can cancel their own request."""
-    requests_controller.delete_request(db=db, user_id=user_id, request_id=request_id)
+    requests_controller.delete_request(db=db, user_id=current_user.id, request_id=request_id)

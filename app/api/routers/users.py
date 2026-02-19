@@ -6,25 +6,23 @@ from app.models.user import User
 from app.models.roles import Role
 from app.schemas import UserCreate, UserResponse, UserUpdate
 from app.services.token_service import issue_and_store_tokens
-from app.api.auth import get_current_user
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-
 @router.get("/me", response_model=UserResponse)
-def get_current_user_profile(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserResponse(id=user.id, 
-                        name=user.name, 
-                        email=user.email, 
-                        date_of_birth=user.date_of_birth, 
-                        phone=user.phone,
-                        website=user.website,
-                        role={"id": user.role.id, "name": user.role.name} if user.role else None,
-                        token=None)
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    return UserResponse(
+        id=current_user.id,
+        name=current_user.name,
+        email=current_user.email,
+        date_of_birth=current_user.date_of_birth,
+        phone=current_user.phone,
+        website=current_user.website,
+        role={"id": current_user.role.id, "name": current_user.role.name} if current_user.role else None,
+        token=None,
+    )
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -73,43 +71,40 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/me", response_model=UserResponse)
-def update_current_user(user_update: UserUpdate, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_current_user(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Update the current authenticated user's profile using bearer token."""
-    db_user = db.query(User).filter(User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     data = user_update.model_dump(exclude_unset=True)
-
     data.pop("email", None)
 
     for field, value in data.items():
-        setattr(db_user, field, value)
+        setattr(current_user, field, value)
 
     db.commit()
-    db.refresh(db_user)
+    db.refresh(current_user)
 
     return UserResponse(
-        id=db_user.id,
-        name=db_user.name,
-        email=db_user.email,
-        date_of_birth=db_user.date_of_birth,
-        phone=db_user.phone,
-        website=db_user.website,
-        role={"id": db_user.role.id, "name": db_user.role.name} if db_user.role else None,
+        id=current_user.id,
+        name=current_user.name,
+        email=current_user.email,
+        date_of_birth=current_user.date_of_birth,
+        phone=current_user.phone,
+        website=current_user.website,
+        role={"id": current_user.role.id, "name": current_user.role.name} if current_user.role else None,
         token=None,
     )
 
 
-
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-def delete_current_user(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.id == user_id).first()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    for token in db_user.personal_access_tokens:
+def delete_current_user(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    for token in current_user.personal_access_tokens:
         db.delete(token)
 
-    db.delete(db_user)
+    db.delete(current_user)
     db.commit()
