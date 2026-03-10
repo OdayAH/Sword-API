@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class Request(Base):
     __tablename__ = "requests"
     __table_args__ = {"schema": "SWORD"}
-
+ 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("SWORD.users.id"), nullable=False)
     service_id: Mapped[int] = mapped_column(Integer, ForeignKey("SWORD.services.id"), nullable=False)

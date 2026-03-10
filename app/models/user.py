@@ -22,6 +22,7 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String(15), nullable=True)
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey("SWORD.roles.id"), nullable=False, server_default="1")
     website: Mapped[str] = mapped_column(String(150), unique=False, nullable=True)
+    profile_image: Mapped[str] = mapped_column(String(255), nullable=True)
 
     role: Mapped[Role] = relationship("Role")
 

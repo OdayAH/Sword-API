@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from typing import Optional
 import re
 from datetime import date, datetime
@@ -65,6 +65,7 @@ class UserResponse(BaseModel):
     date_of_birth: date
     phone: str
     website: Optional[str] = None
+    profile_image: Optional[str] = None
     role: Optional[dict] = None
     token: Optional[str] = None
 

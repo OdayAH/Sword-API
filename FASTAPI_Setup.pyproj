@@ -27,6 +27,19 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="alembic\env.py" />
+    <Compile Include="alembic\versions\778050fd420d_add_provider_id_to_services.py" />
+    <Compile Include="alembic\versions\851ccaec12e0_add_orders_table.py" />
+    <Compile Include="alembic\versions\9735174e141d_add_status_and_timestamps_to_requests.py" />
+    <Compile Include="alembic\versions\a35cadab734f_rename_orders_table_to_requests.py" />
+    <Compile Include="alembic\versions\acd617c17063_add_status_and_timestamps_to_requests.py" />
+    <Compile Include="alembic\versions\add_is_default_to_addresses.py" />
+    <Compile Include="alembic\versions\add_profile_image_to_users.py" />
+    <Compile Include="alembic\versions\add_roles_table_with_defaults.py" />
+    <Compile Include="alembic\versions\add_role_id_to_users.py" />
+    <Compile Include="alembic\versions\c26dc5fcaeb7_init.py" />
+    <Compile Include="alembic\versions\e20fa45e5102_add_new_columns_to_services_and_users.py" />
+    <Compile Include="alembic\versions\remove_description_from_roles.py" />
     <Compile Include="app\api\controllers\requests_controller.py" />
     <Compile Include="app\api\controllers\services_controller.py" />
     <Compile Include="app\api\crud\requests.py" />
@@ -62,6 +75,10 @@
     <Compile Include="app\services\__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="alembic\" />
+    <Folder Include="alembic\versions\" />
+    <Folder Include="alembic\versions\__pycache__\" />
+    <Folder Include="alembic\__pycache__\" />
     <Folder Include="app\" />
     <Folder Include="app\models\" />
     <Folder Include="app\core\" />
@@ -72,6 +89,29 @@
     <Folder Include="app\api\routers\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="alembic.ini" />
+    <Content Include="alembic\README" />
+    <Content Include="alembic\script.py.mako" />
+    <Content Include="alembic\versions\__pycache__\109e6a8cda2f_init.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\128b40476922_edit_user_table.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\1909d85bc2bb_init.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\1d57570bee10_init.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\2993b900619e_initial.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\6ab8574840e3_add_addresses_table.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\778050fd420d_add_provider_id_to_services.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\851ccaec12e0_add_orders_table.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\9735174e141d_add_status_and_timestamps_to_requests.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\a35cadab734f_rename_orders_table_to_requests.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\acd617c17063_add_status_and_timestamps_to_requests.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\add_addresses_table.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\add_is_default_to_addresses.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\add_roles_table_with_defaults.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\add_role_id_to_users.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\c26dc5fcaeb7_init.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\e20fa45e5102_add_new_columns_to_services_and_users.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\f4b68a78cff8_add_all_tables.cpython-314.pyc" />
+    <Content Include="alembic\versions\__pycache__\remove_description_from_roles.cpython-314.pyc" />
+    <Content Include="alembic\__pycache__\env.cpython-314.pyc" />
     <Content Include="requirements.txt" />
     <Content Include=".env" />
   </ItemGroup>

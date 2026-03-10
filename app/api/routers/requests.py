@@ -26,7 +26,9 @@ def create_request(
     db: Session = Depends(get_db),
 ):
     """Create a new service request. Status defaults to pending."""
-    return requests_controller.create_request(db=db, user_id=current_user.id, payload=payload, background_tasks=background_tasks)
+    return requests_controller.create_request(
+        db=db, user_id=current_user.id, payload=payload, background_tasks=background_tasks
+    )
 
 
 @router.get("", response_model=list[RequestResponse])

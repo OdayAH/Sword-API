@@ -91,9 +91,11 @@ def get_current_user(
     Strict auth dependency.
     - Missing token -> 403/401 from HTTPBearer
     - Invalid/expired -> 401 from decode_token()
+    - Token not in DB (revoked/logged out) -> 401
     Returns: full User ORM object with role eagerly loaded.
     """
     from app.models.user import User
+    from app.models.personal_access_token import PersonalAccessToken
 
     token = credentials.credentials
     payload = decode_token(token)
@@ -111,6 +113,21 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
+        )
+
+    db_token = (
+        db.query(PersonalAccessToken)
+        .filter(
+            PersonalAccessToken.access_token == token,
+            PersonalAccessToken.user_id == user_id,
+        )
+        .first()
+    )
+
+    if db_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
         )
 
     user = (

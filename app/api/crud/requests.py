@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache_manager
 from app.enums import RequestStatus, Roles
 from app.models.request import Request
 from app.models.service import Service
@@ -81,10 +82,20 @@ def create_request(db: Session, user_id: int, payload: RequestCreate) -> Request
     db.commit()
     db.refresh(new_request)
 
+    cache_manager.invalidate_tags([
+        f"requests:user_{user_id}",
+        f"requests:provider_{service.provider_id}",
+    ])
+
     return _to_response(new_request)
 
 
 def list_provider_requests(db: Session, provider_id: int) -> list[RequestResponse]:
+    cache_key = f"requests:provider_{provider_id}"
+    cached = cache_manager.get(cache_key)
+    if cached is not None:
+        return [RequestResponse(**item) for item in cached]
+
     requests = (
         db.query(Request)
         .join(Service, Request.service_id == Service.id)
@@ -92,17 +103,36 @@ def list_provider_requests(db: Session, provider_id: int) -> list[RequestRespons
         .order_by(Request.created_at.desc())
         .all()
     )
-    return [_to_response(req) for req in requests]
+    result = [_to_response(req) for req in requests]
+
+    cache_manager.set(
+        cache_key,
+        [r.model_dump() for r in result],
+        tags=[f"requests:provider_{provider_id}"],
+    )
+    return result
 
 
 def list_user_requests(db: Session, user_id: int) -> list[RequestResponse]:
+    cache_key = f"requests:user_{user_id}"
+    cached = cache_manager.get(cache_key)
+    if cached is not None:
+        return [RequestResponse(**item) for item in cached]
+
     requests = (
         db.query(Request)
         .filter(Request.user_id == user_id)
         .order_by(Request.created_at.desc())
         .all()
     )
-    return [_to_response(req) for req in requests]
+    result = [_to_response(req) for req in requests]
+
+    cache_manager.set(
+        cache_key,
+        [r.model_dump() for r in result],
+        tags=[f"requests:user_{user_id}"],
+    )
+    return result
 
 
 def get_request(db: Session, user_id: int, request_id: int) -> RequestResponse:
@@ -137,6 +167,11 @@ def update_request_status(
     db.commit()
     db.refresh(request)
 
+    cache_manager.invalidate_tags([
+        f"requests:user_{request.user_id}",
+        f"requests:provider_{user_id}",
+    ])
+
     return _to_response(request)
 
 
@@ -151,5 +186,11 @@ def delete_request(db: Session, user_id: int, request_id: int) -> None:
     if request.status != RequestStatus.pending:
         raise HTTPException(status_code=400, detail="Can only cancel pending requests")
 
+    provider_id = request.service.provider_id
     db.delete(request)
     db.commit()
+
+    cache_manager.invalidate_tags([
+        f"requests:user_{user_id}",
+        f"requests:provider_{provider_id}",
+    ])
